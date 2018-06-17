@@ -1,5 +1,5 @@
 # hmmobjective
-Hidden Markov Model objective function class with various emission distributions.
+Hidden Markov Model objective function class with gaussian t-distributed and AR emissions.
 
 
-Example shows Hidden Markov Model optimized with Particle Swarm Optimization or Cuckoo Search. Relies on hmmlearn forward algorithm cython implementation.
+Example shows Hidden Markov Model optimized with Particle Swarm Optimization. Relies on hmmlearn forward algorithm cython implementation.
