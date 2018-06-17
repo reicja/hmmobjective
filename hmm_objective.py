@@ -23,6 +23,18 @@ def normalize(x, axis=None):
     x /= sum_
 
 
+def hmm_sample(startprob, transmat, rv, n_samples):
+    n_states = len(startprob)
+    obs = np.zeros(shape=(n_samples, 1))
+    states = [np.random.choice(n_states, size=1, p=startprob)[0]]
+    obs[0] = rv[states[0]].rvs()
+    for n in range(1, n_samples):
+        states.append(np.random.choice(n_states, size=1,
+                                       p=transmat[states[-1], :])[0])
+        obs[n] = rv[states[-1]].rvs()
+    return np.array(obs), np.array(states)
+
+
 class _HMMCost(object):
     def __init__(self, X, n_states):
         self.X = X
