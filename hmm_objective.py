@@ -185,26 +185,32 @@ class THMM(_HMMBase):
         self.params['scale'] = self._params['scale']
 
 
-# TODO:
-
 class ARHMM(_HMMBase):
-    def __init__(self, X, n_states, order=1):
-        super(ARHMM, self).__init__(X, n_states)
+    def __init__(self, n_states, order=1):
+        super(ARHMM, self).__init__(n_states)
         self._params['phi'] = []
         self._params['loc'] = []
         self._params['scale'] = []
         self.dim += n_states * (2 + order)  # holds for 1D emissions
         self._p = order
 
-    def _logprob_X(self, **kwargs):
-        Xp = [self.X[:-self._p + i] for i in range(self._p)]
+    # TODO: without loops?
+    def _logprob_X(self, X, **kwargs):
+        """Conditional AR(p) distribution."""
+        logprob = np.zeros((len(X) - self._p, self.n_states))
+        nX = len(X)
+        Xp = [X[i:nX-(i+1)] for i in range(self._p)]
         Xp = np.hstack(Xp)
-        loc = np.dot(kwargs['phi'], Xp)
-        loc += kwargs['loc']
-        scale = kwargs['scale']
-        return norm(loc=loc, scale=scale).logpdf(self.X[self._p:])
+        for k in range(self.n_states):
+            loc = np.dot(Xp, kwargs['phi'][k*self._p:(k+1)*self._p])
+            loc += kwargs['loc'][k]
+            scale = kwargs['scale'][k]
+            logprob[:, k] = norm(loc=loc, scale=scale).logpdf(X[self._p:].flatten())
+        return logprob
 
     def _parse_particle_params(self, particle):
+        """Parse parameters from particle in order. The order is
+        (sclae, loc, phi)"""
         sigma = particle[:self.n_states]
         self._repair_zeros(sigma)
         self._params['scale'] = sigma
