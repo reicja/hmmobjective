@@ -10,7 +10,7 @@ import numpy as np
 from scipy.stats import norm
 from scipy.stats import t as student
 from swarm_optimization import ParticleSwarm
-from hmm_objective import GaussianHMMCost, StudentHMMCost
+from hmm_objective import GaussianHMMCost, StudentHMMCost, sample_hmm
 
 
 def gen_hmm_obs(pi, A, rv, n_samples):
@@ -26,14 +26,13 @@ def gen_hmm_obs(pi, A, rv, n_samples):
     return np.array(obs), np.array(states)
 
 
+norm_pdfs = lambda pars: [norm(loc=pars['loc'][k], scale=pars['scale'][k])
+                          for k in range(len(pars.keys()))]
 
-norm_pdfs = lambda pars: [norm(loc=pars['mean1'], scale=pars['sig1']),
-                          norm(loc=pars['mean2'], scale=pars['sig2'])]
-
-t_pdfs = lambda pars: [student(loc=pars['mean1'], scale=pars['sig1'],
-                               df=pars['df1']),
-                       student(loc=pars['mean2'], scale=pars['sig2'],
-                               df=pars['df2'])]
+t_pdfs = lambda pars: [student(loc=pars['loc'][k],
+                               scale=pars['scale'][k],
+                               df=pars['df'][k])
+                       for k in range(len(pars.keys()))]
 
 n_samples = 100
 prior = np.array([.15, .85])
@@ -44,20 +43,20 @@ a21 = .07
 a22 = .93
 transmat = np.array([[a11, a12], [a21, a22]])
 
-params = {}
-params['mean1'] = -.1
-params['mean2'] = .05
+params_norm = {}
+params_norm['loc'] = [-.1, .05]
+params_norm['scale'] = [1.5, .5]
 
-params['sig1'] = 1.5
-params['sig2'] = .5
+params_t = {}
+params_t['loc'] = [-.1, .05]
+params_t['scale'] = [1.5, .5]
+params_t['df'] = [9, 15]
 
-params['df1'] = 9
-params['df2'] = 15
 
-obs, states = gen_hmm_obs(pi=prior,
-                          A=transmat,
-                          rv=norm_pdfs(params),
-                          n_samples=n_samples)
+obs, states = sample_hmm(startprob=prior,
+                         transmat=transmat,
+                         rv=norm_pdfs(params_norm),
+                         n_samples=n_samples)
 
 
 hmm = GaussianHMMCost(obs, n_states=2)
@@ -82,13 +81,16 @@ print "Particle Swarm solution likelihood: {0}".format(ps.get_solution()[1])
 print "\n"
 print "Simulated data likelihood: {0}".format(
         hmm.cost(np.hstack((prior, transmat.flatten(),
-                            params['mean1'], params['mean2'],
-                            params['sig1'], params['sig2']))))
+                            params_norm['loc'], params_norm['scale']))))
 
 
+# data resample
+
+
+# t-distributed data
 obs, states = gen_hmm_obs(pi=prior,
                           A=transmat,
-                          rv=t_pdfs(params),
+                          rv=t_pdfs(params_t),
                           n_samples=n_samples)
 
 
@@ -114,6 +116,6 @@ print "Particle Swarm solution likelihood: {0}".format(ps.get_solution()[1])
 print "\n"
 print "Simulated data likelihood: {0}".format(
         hmm.cost(np.hstack((prior, transmat.flatten(),
-                            params['df1'], params['df2'],
-                            params['mean1'], params['mean2'],
-                            params['sig1'], params['sig2']))))
+                            params_t['df'],
+                            params_t['loc'],
+                            params_t['scale']))))
